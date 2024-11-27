@@ -11,7 +11,9 @@ export async function instantiate(module, imports = {}) {
                 );
             }
         },
-        ...imports
+        ...imports,
+        // Add proper array handling
+        Int32Array_ID: Int32Array
     };
 
     try {

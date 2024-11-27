@@ -27,10 +27,11 @@
                 
                 // Array example
                 const arr = new Int32Array([1, 2, 3, 4, 5]);
+                // Pass array properly to WebAssembly
                 const sum = module.exports.sumArray(arr);
                 resultDiv.innerHTML += `<p>Sum of array [1,2,3,4,5] = ${sum}</p>`;
 
-                // Test array allocation
+                // Handle allocated array properly
                 const allocatedArray = module.exports.allocateArray(3);
                 resultDiv.innerHTML += `<p>Allocated array size: ${allocatedArray.length}</p>`;
             } catch (error) {
