@@ -1,0 +1,17 @@
+{
+  "extends": "assemblyscript/std/assembly.json",
+  "include": [
+    "../src/**/*.ts"
+  ],
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "commonjs",
+    "strict": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noEmitOnError": true,
+    "allowJs": false,
+    "types": ["assemblyscript/std/assembly"]
+  }
+}

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AssemblyScript WebAssembly Demo</title>
+</head>
+<body>
+    <h1>AssemblyScript WebAssembly Demo</h1>
+    <div id="result"></div>
+
+    <script type="module">
+        import { instantiate } from "./loader.js";
+        
+        async function init() {
+            try {
+                // Create result div
+                const resultDiv = document.getElementById("result");
+                resultDiv.innerHTML = "Loading WebAssembly module...";
+
+                // Load the WebAssembly module
+                const module = await instantiate(fetch("build/release.wasm"));
+                
+                // Example usage
+                const result = module.exports.add(5, 3);
+                resultDiv.innerHTML = `<p>5 + 3 = ${result}</p>`;
+                
+                // Array example
+                const arr = new Int32Array([1, 2, 3, 4, 5]);
+                const sum = module.exports.sumArray(arr);
+                resultDiv.innerHTML += `<p>Sum of array [1,2,3,4,5] = ${sum}</p>`;
+
+                // Test array allocation
+                const allocatedArray = module.exports.allocateArray(3);
+                resultDiv.innerHTML += `<p>Allocated array size: ${allocatedArray.length}</p>`;
+            } catch (error) {
+                console.error("Failed to load WebAssembly module:", error);
+                document.getElementById("result").innerHTML = 
+                    `<p style="color: red">Error: ${error.message}</p>`;
+            }
+        }
+
+        init().catch(error => {
+            console.error("Initialization failed:", error);
+            document.getElementById("result").innerHTML = 
+                `<p style="color: red">Fatal error: ${error.message}</p>`;
+        });
+    </script>
+</body>
+</html>

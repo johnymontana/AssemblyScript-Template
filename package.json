@@ -1,0 +1,20 @@
+{
+  "name": "assemblyscript-template",
+  "version": "1.0.0",
+  "description": "A minimal but complete template for AssemblyScript/WebAssembly projects with all necessary tooling and configuration.",
+  "main": "loader.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "as-bind": "^0.8.2",
+    "assemblyscript": "^0.27.31",
+    "http-server": "^14.1.1"
+  }
+}
