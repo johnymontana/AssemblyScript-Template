@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebAssembly Performance Benchmarks</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        .benchmark-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .benchmark-result {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="benchmark-container">
+        <h1>WebAssembly vs JavaScript Performance Benchmarks</h1>
+        <div id="controls">
+            <button onclick="runAllBenchmarks()">Run All Benchmarks</button>
+        </div>
+        <div id="results"></div>
+        <div id="chart"></div>
+    </div>
+
+    <script type="module">
+        import { instantiate } from "./loader.js";
+
+        // JavaScript implementations for comparison
+        function jsFibonacci(n) {
+            if (n <= 1) return n;
+            return jsFibonacci(n - 1) + jsFibonacci(n - 2);
+        }
+
+        function jsArraySort(arr) {
+            const result = [...arr];
+            for (let i = 0; i < result.length; i++) {
+                for (let j = 0; j < result.length - i - 1; j++) {
+                    if (result[j] > result[j + 1]) {
+                        const temp = result[j];
+                        result[j] = result[j + 1];
+                        result[j + 1] = temp;
+                    }
+                }
+            }
+            return result;
+        }
+
+        function jsMatrixMultiplication(a, b, n) {
+            const result = new Int32Array(n * n);
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) {
+                    let sum = 0;
+                    for (let k = 0; k < n; k++) {
+                        sum += a[i * n + k] * b[k * n + j];
+                    }
+                    result[i * n + j] = sum;
+                }
+            }
+            return result;
+        }
+
+        // Benchmark runner
+        async function runBenchmark(name, wasmFn, jsFn, input) {
+            const iterations = 5;
+            let wasmTimes = [];
+            let jsTimes = [];
+
+            for (let i = 0; i < iterations; i++) {
+                // Benchmark WebAssembly
+                const wasmStart = performance.now();
+                wasmFn(input);
+                wasmTimes.push(performance.now() - wasmStart);
+
+                // Benchmark JavaScript
+                const jsStart = performance.now();
+                jsFn(input);
+                jsTimes.push(performance.now() - jsStart);
+            }
+
+            const wasmAvg = wasmTimes.reduce((a, b) => a + b) / iterations;
+            const jsAvg = jsTimes.reduce((a, b) => a + b) / iterations;
+
+            return {
+                name,
+                wasmTime: wasmAvg,
+                jsTime: jsAvg,
+                speedup: jsAvg / wasmAvg
+            };
+        }
+
+        // Visualization
+        function visualizeResults(results) {
+            const trace1 = {
+                x: results.map(r => r.name),
+                y: results.map(r => r.wasmTime),
+                name: 'WebAssembly',
+                type: 'bar'
+            };
+
+            const trace2 = {
+                x: results.map(r => r.name),
+                y: results.map(r => r.jsTime),
+                name: 'JavaScript',
+                type: 'bar'
+            };
+
+            const layout = {
+                title: 'Execution Time Comparison',
+                barmode: 'group',
+                yaxis: {
+                    title: 'Time (ms)'
+                }
+            };
+
+            Plotly.newPlot('chart', [trace1, trace2], layout);
+        }
+
+        // Main benchmark runner
+        window.runAllBenchmarks = async function() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = 'Running benchmarks...';
+
+            try {
+                const wasmModule = await instantiate(fetch("dist/release.wasm"));
+                
+                const benchmarks = [
+                    {
+                        name: 'Fibonacci(30)',
+                        input: 30,
+                        wasmFn: n => wasmModule.exports.fibonacci(n),
+                        jsFn: jsFibonacci
+                    },
+                    {
+                        name: 'Array Sort (1000 elements)',
+                        input: new Int32Array(1000).map(() => Math.floor(Math.random() * 1000)),
+                        wasmFn: arr => wasmModule.exports.arraySort(arr),
+                        jsFn: jsArraySort
+                    },
+                    {
+                        name: 'Matrix Multiplication (50x50)',
+                        input: {
+                            a: new Int32Array(2500).map(() => Math.floor(Math.random() * 100)),
+                            b: new Int32Array(2500).map(() => Math.floor(Math.random() * 100)),
+                            n: 50
+                        },
+                        wasmFn: ({a, b, n}) => wasmModule.exports.matrixMultiplication(a, b, n),
+                        jsFn: ({a, b, n}) => jsMatrixMultiplication(a, b, n)
+                    }
+                ];
+
+                const results = [];
+                for (const benchmark of benchmarks) {
+                    const result = await runBenchmark(
+                        benchmark.name,
+                        benchmark.wasmFn,
+                        benchmark.jsFn,
+                        benchmark.input
+                    );
+                    results.push(result);
+                }
+
+                // Display results
+                resultsDiv.innerHTML = results.map(r => `
+                    <div class="benchmark-result">
+                        <h3>${r.name}</h3>
+                        <p>WebAssembly: ${r.wasmTime.toFixed(2)}ms</p>
+                        <p>JavaScript: ${r.jsTime.toFixed(2)}ms</p>
+                        <p>Speedup: ${r.speedup.toFixed(2)}x</p>
+                    </div>
+                `).join('');
+
+                // Visualize results
+                visualizeResults(results);
+            } catch (error) {
+                resultsDiv.innerHTML = `Error running benchmarks: ${error.message}`;
+                console.error(error);
+            }
+        };
+    </script>
+</body>
+</html>
