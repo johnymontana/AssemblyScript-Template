@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm install @as-pect/cli@6.0.0 assemblyscript@0.19.23 --save-dev
+      - run: npx asp --verbose
+      - name: Report test results
+        if: always()
+        run: |
+          if [ -f "asp-test-report.json" ]; then
+            cat asp-test-report.json
+          fi
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm install assemblyscript@0.19.23 --save-dev
+      - run: npx asc src/index.ts -o dist/release.wasm
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: wasm-build
+          path: dist/
