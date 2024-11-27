@@ -21,19 +21,55 @@
                 // Load the WebAssembly module
                 const module = await instantiate(fetch("dist/release.wasm"));
                 
-                // Example usage
+                // Basic arithmetic
                 const result = module.exports.add(5, 3);
-                resultDiv.innerHTML = `<p>5 + 3 = ${result}</p>`;
+                resultDiv.innerHTML = `<p>Basic Arithmetic: 5 + 3 = ${result}</p>`;
                 
-                // Array example
+                // Array operations
                 const arr = new Int32Array([1, 2, 3, 4, 5]);
-                // Pass array properly to WebAssembly
                 const sum = module.exports.sumArray(arr);
-                resultDiv.innerHTML += `<p>Sum of array [1,2,3,4,5] = ${sum}</p>`;
+                resultDiv.innerHTML += `<p>Array Sum: [1,2,3,4,5] = ${sum}</p>`;
 
-                // Handle allocated array properly
-                const allocatedArray = module.exports.allocateArray(3);
-                resultDiv.innerHTML += `<p>Allocated array size: ${allocatedArray.length}</p>`;
+                // String operations
+                const str = "hello world";
+                const reversed = module.exports.reverseString(str);
+                const capitalized = module.exports.capitalizeWords(str);
+                const occurrences = module.exports.countOccurrences(str + " " + str, "world");
+                resultDiv.innerHTML += `
+                    <h3>String Operations:</h3>
+                    <p>Original: "${str}"</p>
+                    <p>Reversed: "${reversed}"</p>
+                    <p>Capitalized: "${capitalized}"</p>
+                    <p>Occurrences of 'world': ${occurrences}</p>
+                `;
+
+                // Advanced Math
+                const matrix = new Float64Array([1, 2, 3, 0, 1, 4, 5, 6, 0]);
+                const det = module.exports.matrixDeterminant3x3(matrix);
+                resultDiv.innerHTML += `
+                    <h3>Advanced Math:</h3>
+                    <p>3x3 Matrix Determinant: ${det}</p>
+                `;
+
+                // Image Processing Demo (using a small canvas)
+                const canvas = document.createElement('canvas');
+                canvas.width = 100;
+                canvas.height = 100;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = 'red';
+                ctx.fillRect(0, 0, 50, 100);
+                ctx.fillStyle = 'blue';
+                ctx.fillRect(50, 0, 50, 100);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                module.exports.grayscale(imageData.data, canvas.width, canvas.height);
+                ctx.putImageData(imageData, 0, 0);
+                
+                resultDiv.innerHTML += `
+                    <h3>Image Processing:</h3>
+                    <p>Grayscale conversion demo:</p>
+                `;
+                resultDiv.appendChild(canvas);
             } catch (error) {
                 console.error("Failed to load WebAssembly module:", error);
                 document.getElementById("result").innerHTML = 
