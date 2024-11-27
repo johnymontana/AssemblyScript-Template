@@ -16,6 +16,12 @@
             padding: 10px;
             border: 1px solid #ddd;
         }
+        .error {
+            color: red;
+            padding: 10px;
+            border: 1px solid red;
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -31,6 +37,22 @@
     <script type="module">
         import { instantiate } from "./loader.js";
 
+        // Error boundary implementation
+        class BenchmarkError extends Error {
+            constructor(message, benchmark) {
+                super(message);
+                this.name = 'BenchmarkError';
+                this.benchmark = benchmark;
+            }
+        }
+
+        // Safe array copy utility
+        function copyToWasmMemory(arr, wasmMemory) {
+            const wasmArray = new Int32Array(wasmMemory.buffer, 0, arr.length);
+            wasmArray.set(arr);
+            return wasmArray;
+        }
+
         // JavaScript implementations for comparison
         function jsFibonacci(n) {
             if (n <= 1) return n;
@@ -38,7 +60,7 @@
         }
 
         function jsArraySort(arr) {
-            const result = [...arr];
+            const result = new Int32Array(arr);
             for (let i = 0; i < result.length; i++) {
                 for (let j = 0; j < result.length - i - 1; j++) {
                     if (result[j] > result[j + 1]) {
@@ -65,47 +87,74 @@
             return result;
         }
 
-        // Benchmark runner
-        async function runBenchmark(name, wasmFn, jsFn, input) {
+        // Safe benchmark runner with error handling
+        async function runBenchmark(name, wasmFn, jsFn, input, wasmModule) {
             const iterations = 5;
             let wasmTimes = [];
             let jsTimes = [];
 
-            for (let i = 0; i < iterations; i++) {
-                // Benchmark WebAssembly
-                const wasmStart = performance.now();
-                wasmFn(input);
-                wasmTimes.push(performance.now() - wasmStart);
+            try {
+                for (let i = 0; i < iterations; i++) {
+                    // Safely copy input for WebAssembly
+                    let wasmInput;
+                    if (input instanceof Int32Array) {
+                        wasmInput = copyToWasmMemory(input, wasmModule.exports.memory);
+                    } else if (input && input.a instanceof Int32Array) {
+                        // Handle matrix multiplication case
+                        const wasmA = copyToWasmMemory(input.a, wasmModule.exports.memory);
+                        const wasmB = copyToWasmMemory(input.b, wasmModule.exports.memory);
+                        wasmInput = { a: wasmA, b: wasmB, n: input.n };
+                    } else {
+                        wasmInput = input;
+                    }
 
-                // Benchmark JavaScript
-                const jsStart = performance.now();
-                jsFn(input);
-                jsTimes.push(performance.now() - jsStart);
+                    // Benchmark WebAssembly with error handling
+                    const wasmStart = performance.now();
+                    try {
+                        wasmFn(wasmInput);
+                    } catch (error) {
+                        throw new BenchmarkError(`WebAssembly execution failed: ${error.message}`, name);
+                    }
+                    wasmTimes.push(performance.now() - wasmStart);
+
+                    // Benchmark JavaScript
+                    const jsStart = performance.now();
+                    jsFn(input);
+                    jsTimes.push(performance.now() - jsStart);
+                }
+
+                const wasmAvg = wasmTimes.reduce((a, b) => a + b) / iterations;
+                const jsAvg = jsTimes.reduce((a, b) => a + b) / iterations;
+
+                return {
+                    name,
+                    wasmTime: wasmAvg,
+                    jsTime: jsAvg,
+                    speedup: jsAvg / wasmAvg,
+                    error: null
+                };
+            } catch (error) {
+                return {
+                    name,
+                    error: error.message
+                };
             }
-
-            const wasmAvg = wasmTimes.reduce((a, b) => a + b) / iterations;
-            const jsAvg = jsTimes.reduce((a, b) => a + b) / iterations;
-
-            return {
-                name,
-                wasmTime: wasmAvg,
-                jsTime: jsAvg,
-                speedup: jsAvg / wasmAvg
-            };
         }
 
         // Visualization
         function visualizeResults(results) {
+            const validResults = results.filter(r => !r.error);
+            
             const trace1 = {
-                x: results.map(r => r.name),
-                y: results.map(r => r.wasmTime),
+                x: validResults.map(r => r.name),
+                y: validResults.map(r => r.wasmTime),
                 name: 'WebAssembly',
                 type: 'bar'
             };
 
             const trace2 = {
-                x: results.map(r => r.name),
-                y: results.map(r => r.jsTime),
+                x: validResults.map(r => r.name),
+                y: validResults.map(r => r.jsTime),
                 name: 'JavaScript',
                 type: 'bar'
             };
@@ -160,25 +209,33 @@
                         benchmark.name,
                         benchmark.wasmFn,
                         benchmark.jsFn,
-                        benchmark.input
+                        benchmark.input,
+                        wasmModule
                     );
                     results.push(result);
                 }
 
                 // Display results
                 resultsDiv.innerHTML = results.map(r => `
-                    <div class="benchmark-result">
+                    <div class="benchmark-result ${r.error ? 'error' : ''}">
                         <h3>${r.name}</h3>
-                        <p>WebAssembly: ${r.wasmTime.toFixed(2)}ms</p>
-                        <p>JavaScript: ${r.jsTime.toFixed(2)}ms</p>
-                        <p>Speedup: ${r.speedup.toFixed(2)}x</p>
+                        ${r.error ? 
+                            `<p class="error">Error: ${r.error}</p>` :
+                            `<p>WebAssembly: ${r.wasmTime.toFixed(2)}ms</p>
+                             <p>JavaScript: ${r.jsTime.toFixed(2)}ms</p>
+                             <p>Speedup: ${r.speedup.toFixed(2)}x</p>`
+                        }
                     </div>
                 `).join('');
 
                 // Visualize results
                 visualizeResults(results);
             } catch (error) {
-                resultsDiv.innerHTML = `Error running benchmarks: ${error.message}`;
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        <h3>Fatal Error</h3>
+                        <p>${error.message}</p>
+                    </div>`;
                 console.error(error);
             }
         };
