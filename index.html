@@ -19,7 +19,7 @@
                 resultDiv.innerHTML = "Loading WebAssembly module...";
 
                 // Load the WebAssembly module
-                const module = await instantiate(fetch("build/release.wasm"));
+                const module = await instantiate(fetch("dist/release.wasm"));
                 
                 // Example usage
                 const result = module.exports.add(5, 3);

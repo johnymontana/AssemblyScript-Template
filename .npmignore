@@ -1,0 +1,21 @@
+# Development files
+.replit
+.git
+.gitignore
+generated-icon.png
+
+# Build artifacts
+build/
+node_modules/
+
+# Test files
+tests/
+
+# Development config
+assembly/tsconfig.json
+
+# Example files
+index.html
+
+# Source files (we only want to distribute the compiled files)
+src/

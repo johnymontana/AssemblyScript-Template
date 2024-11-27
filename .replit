@@ -27,11 +27,11 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx asc src/index.ts -o build/release.wasm --bindings esm && npx http-server -p 8000"
+args = "npx asc src/index.ts -o dist/release.wasm --bindings esm && npx http-server -p 8000"
 waitForPort = 8000
 
 [deployment]
-run = ["sh", "-c", "npx asc src/index.ts -o build/release.wasm --bindings esm && npx http-server -p 8000"]
+run = ["sh", "-c", "npx asc src/index.ts -o dist/release.wasm --bindings esm && npx http-server -p 8000"]
 
 [[ports]]
 localPort = 8000
